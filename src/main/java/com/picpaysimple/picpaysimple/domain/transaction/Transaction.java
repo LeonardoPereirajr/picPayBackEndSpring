@@ -2,10 +2,7 @@ package com.picpaysimple.picpaysimple.domain.transaction;
 
 import com.picpaysimple.picpaysimple.domain.user.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 
@@ -14,8 +11,9 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @AllArgsConstructor
+@NoArgsConstructor
 @EqualsAndHashCode(of = "id")
-public class Transation {
+public class Transaction {
 
 @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
