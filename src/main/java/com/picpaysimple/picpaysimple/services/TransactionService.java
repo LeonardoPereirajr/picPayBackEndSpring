@@ -13,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class TransactionService {
@@ -26,39 +27,47 @@ public class TransactionService {
     @Autowired
     private RestTemplate restTemplate;
 
-    public void createTransaction(TransactionDTO transaction) throws Exception {
-      User sender = this.userService.finfUserById(transaction.senderId());
-      User receiver = this.userService.finfUserById(transaction.receiverId());
+    @Autowired
+    private NotificationService notificationService;
 
-      userService.valideTransaction(sender, transaction.value());
+    public Transaction createTransaction(TransactionDTO transaction) throws Exception {
+      User sender = this.userService.findUserById(transaction.senderId());
+      User receiver = this.userService.findUserById(transaction.receiverId());
+
+      userService.validateTransaction(sender, transaction.value());
 
       boolean isAuthorized = this.authorizeTransaction(sender, transaction.value());
-        if (!this.authorizeTransaction(sender, transaction.value())) {
+        if (!isAuthorized) {
              throw new Exception("Não foi possível autorizar a transação");
         }
 
         Transaction newTransaction = new Transaction();
+        newTransaction.setAmount(transaction.value());
         newTransaction.setSender(sender);
         newTransaction.setReceiver(receiver);
-        newTransaction.setAmount(transaction.value());
-        newTransaction.setTimestamp(String.valueOf(LocalDateTime.now()));
+        newTransaction.setTimestamp(LocalDateTime.now().toString());
 
         sender.setBalance(sender.getBalance().subtract(transaction.value()));
         receiver.setBalance(receiver.getBalance().add(transaction.value()));
 
         this.repository.save(newTransaction);
-        this.userService.save(sender);
-        this.userService.save(receiver);
+        this.userService.saveUser(sender);
+        this.userService.saveUser(receiver);
+
+        this.notificationService.sendNotification(sender, "Transação realizada com sucesso");
+        this.notificationService.sendNotification(receiver, "Transação recebida com sucesso");
+
+        return newTransaction;
 
     }
 
     public boolean authorizeTransaction(User sender, BigDecimal value) {
 
-        ResponseEntity<Map> authorizationResponse = restTemplate.getForEntity("https://run.mocky.io/v3/8fafdd68-a090-496f-8c9a-3442cf30dae6", Map.class);
+        ResponseEntity<Map> authorizationResponse = restTemplate.getForEntity("https://run.mocky.io/v3/5794d450-d2e2-4412-8131-73d0293ac1cc", Map.class);
 
         if (authorizationResponse.getStatusCode() == HttpStatus.OK) {
-            String message = (String) authorizationResponse.getBody().get("message");
-            return message.equals("Autorizado");
+            String message = (String) Objects.requireNonNull(authorizationResponse.getBody()).get("message");
+            return "Autorizado".equalsIgnoreCase(message);
         } else return false;
     }
 }
